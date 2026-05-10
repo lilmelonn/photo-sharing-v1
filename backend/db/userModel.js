@@ -11,15 +11,16 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true }
 });
 
-// Middleware pre-save để hash password
-userSchema.pre('save', function(next) {
-  const user = this;
-  if (!user.isModified('password')) return next();
-  bcrypt.hash(user.password, 10, (err, hash) => {
-    if (err) return next(err);
-    user.password = hash;
+// Middleware pre-save: mã hóa mật khẩu nếu thay đổi hoặc mới
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
     next();
-  });
+  } catch (err) {
+    next(err);
+  }
 });
 
 userSchema.methods.comparePassword = async function(candidate) {

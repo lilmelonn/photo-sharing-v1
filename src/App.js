@@ -1,39 +1,28 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Grid, Paper } from '@mui/material';
-import TopBar from './components/TopBar';
-import UserList from './components/UserList';
-import UserDetail from './components/UserDetail';
-import UserPhotos from './components/UserPhotos';
+import TopBar from './components/TopBar';          
+import UserList from './components/UserList';      
+import UserDetail from './components/UserDetail';  
+import UserPhotos from './components/UserPhotos';  
+import LoginRegister from './components/LoginRegister'; 
 
 function App() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [contextText, setContextText] = useState('');
   const [advanced, setAdvanced] = useState(false);
-  const [refreshPhotosKey, setRefreshPhotosKey] = useState(0); // thêm state refresh
+  const [refreshPhotosKey, setRefreshPhotosKey] = useState(0);
 
   const toggleAdvanced = () => setAdvanced(prev => !prev);
-
   const handleLogin = (user) => setLoggedInUser(user);
   const handleLogout = () => setLoggedInUser(null);
+  const handlePhotoUploaded = () => setRefreshPhotosKey(prev => prev + 1);
+  const updateContext = (text) => setContextText(text);
 
-  const handlePhotoUploaded = () => {
-    // Tăng key để UserPhotos reload
-    setRefreshPhotosKey(prev => prev + 1);
+  // Kiểm tra nếu chưa đăng nhập -> chỉ cho phép vào /login
+  const RequireAuth = ({ children }) => {
+    return loggedInUser ? children : <Navigate to="/login" replace />;
   };
-
-  // Wrappers
-  const UserDetailWrapper = () => (
-    <UserDetail onLoadUser={(user) => setContextText(`${user.first_name} ${user.last_name}`)} />
-  );
-
-  const UserPhotosWrapper = () => (
-    <UserPhotos
-      onLoadPhotos={(user) => setContextText(`Photos of ${user.first_name} ${user.last_name}`)}
-      advanced={advanced}
-      refreshKey={refreshPhotosKey} // truyền key xuống
-    />
-  );
 
   return (
     <BrowserRouter>
@@ -45,19 +34,30 @@ function App() {
         onLogout={handleLogout}
         onPhotoUploaded={handlePhotoUploaded}
       />
-      <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 1 }}>
-            <UserList />
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={9}>
-          <Paper sx={{ p: 2 }}>
+      <Grid container spacing={1} sx={{ mt: 1 }}>
+        {loggedInUser && (
+          <Grid item xs={12} md={3}>
+            <Paper sx={{ p: 1 }}>
+              <UserList />
+            </Paper>
+          </Grid>
+        )}
+        <Grid item xs={12} md={loggedInUser ? 9 : 12}>
+          <Paper sx={{ p: 2, minHeight: '80vh' }}>
             <Routes>
-              <Route path="/users/:userId" element={<UserDetailWrapper />} />
-              <Route path="/photos/:userId/:photoIndex?" element={<UserPhotosWrapper />} />
-              <Route path="/users" element={<UserList />} />
-              <Route path="/" element={<Navigate to="/users" replace />} />
+              <Route path="/login" element={
+                loggedInUser ? <Navigate to="/users" replace /> : <LoginRegister onLogin={handleLogin} />
+              } />
+              <Route path="/users" element={
+                <RequireAuth><UserList /></RequireAuth>
+              } />
+              <Route path="/users/:userId" element={
+                <RequireAuth><UserDetail onLoadUser={updateContext} /></RequireAuth>
+              } />
+              <Route path="/photos/:userId/:photoIndex?" element={
+                <RequireAuth><UserPhotos onLoadPhotos={updateContext} advanced={advanced} refreshKey={refreshPhotosKey} /></RequireAuth>
+              } />
+              <Route path="/" element={<Navigate to={loggedInUser ? "/users" : "/login"} replace />} />
             </Routes>
           </Paper>
         </Grid>

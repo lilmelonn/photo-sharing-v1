@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../../.env' }); // nếu .env ở thư mục gốc
+require('dotenv').config(); // bỏ path, để mặc định tìm ở thư mục gốc
 const mongoose = require('mongoose');
 const User = require('./userModel');
 const Photo = require('./photoModel');
@@ -7,26 +7,8 @@ const bcrypt = require('bcrypt');
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/photoapp';
 
 const sampleUsers = [
-  {
-    _id: new mongoose.Types.ObjectId(),
-    first_name: 'John',
-    last_name: 'Doe',
-    login_name: 'johnd',
-    password: '123',
-    location: 'New York',
-    description: 'Loves hiking',
-    occupation: 'Software Engineer'
-  },
-  {
-    _id: new mongoose.Types.ObjectId(),
-    first_name: 'Jane',
-    last_name: 'Smith',
-    login_name: 'janes',
-    password: '123',
-    location: 'London',
-    description: 'Art enthusiast',
-    occupation: 'Graphic Designer'
-  }
+  { _id: new mongoose.Types.ObjectId(), first_name: 'John', last_name: 'Doe', login_name: 'johnd', password: '123', location: 'New York', description: 'Loves hiking', occupation: 'Software Engineer' },
+  { _id: new mongoose.Types.ObjectId(), first_name: 'Jane', last_name: 'Smith', login_name: 'janes', password: '123', location: 'London', description: 'Art enthusiast', occupation: 'Graphic Designer' }
 ];
 
 const samplePhotos = [
@@ -37,10 +19,10 @@ const samplePhotos = [
 async function load() {
   try {
     await mongoose.connect(mongoURI);
-    await mongoose.connection.db.dropDatabase(); // Xóa hết dữ liệu cũ
+    await mongoose.connection.db.dropDatabase();
     for (let u of sampleUsers) {
       const user = new User(u);
-      await user.save(); // middleware pre('save') sẽ tự hash password
+      await user.save();
     }
     for (let p of samplePhotos) {
       const photo = new Photo(p);

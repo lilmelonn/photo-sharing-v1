@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -7,12 +8,23 @@ import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import PhotoUploadModal from '../PhotoUploadModal';
 
+const BACKEND_URL = 'http://localhost:3000';
+
 function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout, onPhotoUploaded }) {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const handleUploadClose = () => setUploadModalOpen(false);
   const handleUploadSuccess = () => {
     if (onPhotoUploaded) onPhotoUploaded();
+  };
+
+  const handleLogoutClick = async () => {
+    try {
+      await axios.post(`${BACKEND_URL}/admin/logout`, {}, { withCredentials: true });
+      if (onLogout) onLogout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   };
 
   return (
@@ -37,7 +49,7 @@ function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout
               <Typography variant="subtitle1" sx={{ mr: 2 }}>
                 Hi {user.first_name}
               </Typography>
-              <Button color="inherit" onClick={onLogout}>
+              <Button color="inherit" onClick={handleLogoutClick}>
                 Logout
               </Button>
             </>
