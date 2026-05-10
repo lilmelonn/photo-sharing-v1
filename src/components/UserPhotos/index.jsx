@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardMedia from '@mui/material/CardMedia';
@@ -8,29 +9,30 @@ import Typography from '@mui/material/Typography';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import fetchModel from '../../lib/fetchModelData';
 import PhotoStepper from '../PhotoStepper';
 
 function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
   const { userId } = useParams();
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setLoading(true);
     // Lấy danh sách ảnh của user
-    fetchModel(`/photosOfUser/${userId}`)
+    axios.get(`/photosOfUser/${userId}`)
       .then(response => {
         setPhotos(response.data);
         setLoading(false);
       })
       .catch(err => {
         console.error('Failed to load photos:', err);
+        setError(err.response?.data?.error || 'Failed to load photos');
         setLoading(false);
       });
 
     // Lấy thông tin user để cập nhật TopBar
-    fetchModel(`/user/${userId}`)
+    axios.get(`/user/${userId}`)
       .then(userRes => {
         if (onLoadPhotos) onLoadPhotos(userRes.data);
       })
@@ -39,9 +41,8 @@ function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleString();
 
-  if (loading) {
-    return <div>Loading photos...</div>;
-  }
+  if (loading) return <div>Loading photos...</div>;
+  if (error) return <div>Error: {error}</div>;
 
   // Chế độ Stepper (Extra Credit)
   if (advanced) {
@@ -57,7 +58,7 @@ function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
             <Card>
               <CardMedia
                 component="img"
-                image={`/images/${photo.file_name}`}
+                image={`http://localhost:3000/images/${photo.file_name}`}
                 alt={`Photo ${photo._id}`}
               />
               <CardContent>

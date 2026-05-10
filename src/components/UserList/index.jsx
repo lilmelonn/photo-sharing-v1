@@ -3,57 +3,44 @@ import { Link } from 'react-router-dom';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
-import fetchModel from '../../lib/fetchModelData';
+import axios from 'axios';
+
+// Cấu hình axios nếu chưa có ở nơi khác (có thể đặt ở index.js)
+axios.defaults.baseURL = 'http://localhost:3000';
+axios.defaults.withCredentials = true;
 
 function UserList() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log("🔍 useEffect - bắt đầu gọi fetchModel");
-    fetchModel('/user/list')
+    console.log("🔍 Gọi API /user/list");
+    axios.get('/user/list')
       .then(response => {
-        console.log("✅ fetchModel thành công, response:", response);
-        console.log("📦 response.data:", response.data);
-        console.log("📏 Kiểu dữ liệu của response.data:", typeof response.data);
-        console.log("🔢 Có phải mảng không?", Array.isArray(response.data));
-        
-        // Ép kiểu an toàn
-        const data = Array.isArray(response.data) ? response.data : [];
-        console.log("🛠 Sau ép kiểu, data =", data);
-        
-        setUsers(data);
+        console.log("✅ Dữ liệu nhận:", response.data);
+        if (Array.isArray(response.data)) {
+          setUsers(response.data);
+        } else {
+          setUsers([]);
+        }
         setLoading(false);
       })
       .catch(err => {
-        console.error("❌ fetchModel thất bại:", err);
+        console.error("❌ Lỗi khi gọi user list:", err);
+        setError(err.response?.data?.error || err.message);
         setUsers([]);
         setLoading(false);
       });
   }, []);
 
-  console.log("🔄 Render UserList, loading =", loading, "users =", users);
-
-  if (loading) {
-    return <div>⏳ Loading users...</div>;
-  }
-
-  const safeUsers = users || [];
-  console.log("👥 Số lượng user an toàn:", safeUsers.length);
-
-  if (safeUsers.length === 0) {
-    return (
-      <List component="nav">
-        <ListItem>
-          <ListItemText primary="⚠️ No users found." />
-        </ListItem>
-      </List>
-    );
-  }
+  if (loading) return <div>⏳ Loading users...</div>;
+  if (error) return <div>⚠️ Error: {error}</div>;
+  if (users.length === 0) return <div>⚠️ No users found.</div>;
 
   return (
     <List component="nav">
-      {safeUsers.map(user => (
+      {users.map(user => (
         <ListItem
           button
           key={user._id}

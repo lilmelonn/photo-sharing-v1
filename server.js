@@ -6,6 +6,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
 const User = require('./backend/db/userModel');
 const Photo = require('./backend/db/photoModel');
@@ -17,13 +18,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: 'http://localhost:3001', credentials: true }));
 app.use(express.json());
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback_secret',
+  secret: process.env.SESSION_SECRET || 'supersecret',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 } // 1 day
+  cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
 }));
-
-// Static files
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
 // Kết nối MongoDB
@@ -39,7 +38,7 @@ const requireLogin = (req, res, next) => {
 
 // ------------------- API -------------------
 
-// Đăng ký
+// Đăng ký (hash password)
 app.post('/user', async (req, res) => {
   console.log('📝 Register attempt:', req.body);
   const { login_name, password, first_name, last_name, location, description, occupation } = req.body;
@@ -49,7 +48,16 @@ app.post('/user', async (req, res) => {
   try {
     const existing = await User.findOne({ login_name });
     if (existing) return res.status(400).json({ error: 'Login name exists' });
-    const user = new User({ login_name, password, first_name, last_name, location, description, occupation });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({
+      login_name,
+      password: hashedPassword,
+      first_name,
+      last_name,
+      location,
+      description,
+      occupation
+    });
     await user.save();
     const { password: pwd, ...userData } = user.toObject();
     console.log('✅ User registered:', userData);
@@ -64,20 +72,12 @@ app.post('/user', async (req, res) => {
 app.post('/admin/login', async (req, res) => {
   console.log('🔐 Login request:', req.body);
   const { login_name, password } = req.body;
-  if (!login_name || !password) {
-    return res.status(400).json({ error: 'Missing credentials' });
-  }
+  if (!login_name || !password) return res.status(400).json({ error: 'Missing credentials' });
   try {
     const user = await User.findOne({ login_name });
-    if (!user) {
-      console.log('❌ User not found:', login_name);
-      return res.status(400).json({ error: 'Invalid login' });
-    }
-    const isValid = await user.comparePassword(password);
-    if (!isValid) {
-      console.log('❌ Wrong password for:', login_name);
-      return res.status(400).json({ error: 'Invalid login' });
-    }
+    if (!user) return res.status(400).json({ error: 'Invalid login' });
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) return res.status(400).json({ error: 'Invalid login' });
     req.session.userId = user._id;
     const { password: pwd, ...userData } = user.toObject();
     console.log('✅ Login successful:', userData);

@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { Modal, Box, Button, Typography, CircularProgress } from '@mui/material';
 
-const BACKEND_URL = 'http://localhost:3000';
 const style = {
   position: 'absolute',
   top: '50%',
@@ -22,8 +21,11 @@ function PhotoUploadModal({ open, onClose, onUploaded }) {
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setError('');
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setError('');
+    }
   };
 
   const handleSubmit = async () => {
@@ -31,28 +33,35 @@ function PhotoUploadModal({ open, onClose, onUploaded }) {
       setError('Please select a file.');
       return;
     }
+
     setUploading(true);
     const formData = new FormData();
     formData.append('photo', file);
+
     try {
-      await axios.post(`${BACKEND_URL}/photos/new`, formData, {
+      // Dùng axios với baseURL đã cấu hình sẵn (vd: http://localhost:3000)
+      const response = await axios.post('/photos/new', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true,
+        withCredentials: true, // gửi cookie session
       });
-      // Reset input và state
+      console.log('Upload success:', response.data);
+      // Reset form
       if (fileInputRef.current) fileInputRef.current.value = '';
       setFile(null);
-      onUploaded(); // refresh danh sách ảnh
+      // Gọi callback để refresh danh sách ảnh (nếu có)
+      if (onUploaded) onUploaded();
       onClose();
     } catch (err) {
-      console.error('Upload error:', err);
-      setError(err.response?.data?.error || 'Upload failed. Please try again.');
+      console.error('Upload error details:', err);
+      const msg = err.response?.data?.error || err.message || 'Upload failed';
+      setError(msg);
     } finally {
       setUploading(false);
     }
   };
 
   const handleClose = () => {
+    // Reset toàn bộ state và input
     setFile(null);
     setError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -62,19 +71,28 @@ function PhotoUploadModal({ open, onClose, onUploaded }) {
   return (
     <Modal open={open} onClose={handleClose}>
       <Box sx={style}>
-        <Typography variant="h6" component="h2">Upload Photo</Typography>
+        <Typography variant="h6" component="h2" gutterBottom>
+          Upload Photo
+        </Typography>
         <input
           type="file"
           accept="image/*"
           onChange={handleFileChange}
           ref={fileInputRef}
+          style={{ marginBottom: '16px', display: 'block' }}
         />
-        {error && <Typography color="error" sx={{ mt: 1 }}>{error}</Typography>}
-        <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+        {error && (
+          <Typography color="error" sx={{ mt: 1, mb: 1 }}>
+            {error}
+          </Typography>
+        )}
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <Button variant="outlined" onClick={handleClose} disabled={uploading}>
+            Cancel
+          </Button>
           <Button variant="contained" onClick={handleSubmit} disabled={uploading}>
             {uploading ? <CircularProgress size={24} /> : 'Upload'}
           </Button>
-          <Button variant="outlined" onClick={handleClose}>Cancel</Button>
         </Box>
       </Box>
     </Modal>

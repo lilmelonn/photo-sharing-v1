@@ -8,9 +8,19 @@ import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import PhotoUploadModal from '../PhotoUploadModal';
 
-const BACKEND_URL = 'http://localhost:3000';
+// Không cần BACKEND_URL vì axios đã được config baseURL toàn cục
+// Đảm bảo trong src/index.js có:
+// axios.defaults.baseURL = 'http://localhost:3000';
+// axios.defaults.withCredentials = true;
 
-function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout, onPhotoUploaded }) {
+function TopBar({ 
+  user, 
+  contextText, 
+  advancedEnabled, 
+  onAdvancedToggle, 
+  onLogout, 
+  onPhotoUploaded 
+}) {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const handleUploadClose = () => setUploadModalOpen(false);
@@ -20,10 +30,12 @@ function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout
 
   const handleLogoutClick = async () => {
     try {
-      await axios.post(`${BACKEND_URL}/admin/logout`, {}, { withCredentials: true });
+      await axios.post('/admin/logout');
+      // Clear user state in App
       if (onLogout) onLogout();
+      // Optional: reload page or navigate to login (done in App)
     } catch (err) {
-      console.error('Logout error:', err);
+      console.error('Logout failed:', err.response?.data || err.message);
     }
   };
 
@@ -31,19 +43,32 @@ function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout
     <>
       <AppBar position="static">
         <Toolbar>
+          {/* Left side: your name */}
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             Your Name
           </Typography>
+
+          {/* Add Photo button – only when logged in */}
           {user && (
             <Button color="inherit" onClick={() => setUploadModalOpen(true)}>
               Add Photo
             </Button>
           )}
+
+          {/* Advanced Features checkbox */}
           <FormControlLabel
-            control={<Checkbox checked={advancedEnabled} onChange={onAdvancedToggle} color="default" />}
+            control={
+              <Checkbox
+                checked={advancedEnabled}
+                onChange={onAdvancedToggle}
+                color="default"
+              />
+            }
             label="Enable Advanced Features"
             sx={{ color: 'white', mx: 2 }}
           />
+
+          {/* Right side: user greeting / login prompt */}
           {user ? (
             <>
               <Typography variant="subtitle1" sx={{ mr: 2 }}>
@@ -56,9 +81,15 @@ function TopBar({ user, contextText, advancedEnabled, onAdvancedToggle, onLogout
           ) : (
             <Typography variant="subtitle1">Please Login</Typography>
           )}
-          <Typography variant="subtitle1" sx={{ ml: 2 }}>{contextText}</Typography>
+
+          {/* Context text (e.g. "Photos of John" or user name) */}
+          <Typography variant="subtitle1" sx={{ ml: 2 }}>
+            {contextText}
+          </Typography>
         </Toolbar>
       </AppBar>
+
+      {/* Modal for uploading photos */}
       <PhotoUploadModal
         open={uploadModalOpen}
         onClose={handleUploadClose}
