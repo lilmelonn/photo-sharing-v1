@@ -1,46 +1,68 @@
-import './App.css';
+import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Grid, Paper } from '@mui/material';
+import TopBar from './components/TopBar';
+import UserList from './components/UserList';
+import UserDetail from './components/UserDetail';
+import UserPhotos from './components/UserPhotos';
 
-import React from "react";
-import { Grid, Typography, Paper } from "@mui/material";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+function App() {
+  const [loggedInUser, setLoggedInUser] = useState(null);
+  const [contextText, setContextText] = useState('');
+  const [advanced, setAdvanced] = useState(false);
+  const [refreshPhotosKey, setRefreshPhotosKey] = useState(0); // thêm state refresh
 
-import TopBar from "./components/TopBar";
-import UserDetail from "./components/UserDetail";
-import UserList from "./components/UserList";
-import UserPhotos from "./components/UserPhotos";
+  const toggleAdvanced = () => setAdvanced(prev => !prev);
 
-const App = (props) => {
+  const handleLogin = (user) => setLoggedInUser(user);
+  const handleLogout = () => setLoggedInUser(null);
+
+  const handlePhotoUploaded = () => {
+    // Tăng key để UserPhotos reload
+    setRefreshPhotosKey(prev => prev + 1);
+  };
+
+  // Wrappers
+  const UserDetailWrapper = () => (
+    <UserDetail onLoadUser={(user) => setContextText(`${user.first_name} ${user.last_name}`)} />
+  );
+
+  const UserPhotosWrapper = () => (
+    <UserPhotos
+      onLoadPhotos={(user) => setContextText(`Photos of ${user.first_name} ${user.last_name}`)}
+      advanced={advanced}
+      refreshKey={refreshPhotosKey} // truyền key xuống
+    />
+  );
+
   return (
-      <Router>
-        <div>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TopBar />
-            </Grid>
-            <div className="main-topbar-buffer" />
-            <Grid item sm={3}>
-              <Paper className="main-grid-item">
-                <UserList />
-              </Paper>
-            </Grid>
-            <Grid item sm={9}>
-              <Paper className="main-grid-item">
-                <Routes>
-                  <Route
-                      path="/users/:userId"
-                      element = {<UserDetail />}
-                  />
-                  <Route
-                      path="/photos/:userId"
-                      element = {<UserPhotos />}
-                  />
-                  <Route path="/users" element={<UserList />} />
-                </Routes>
-              </Paper>
-            </Grid>
-          </Grid>
-        </div>
-      </Router>
+    <BrowserRouter>
+      <TopBar
+        user={loggedInUser}
+        contextText={contextText}
+        advancedEnabled={advanced}
+        onAdvancedToggle={toggleAdvanced}
+        onLogout={handleLogout}
+        onPhotoUploaded={handlePhotoUploaded}
+      />
+      <Grid container spacing={2} sx={{ mt: 1 }}>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ p: 1 }}>
+            <UserList />
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={9}>
+          <Paper sx={{ p: 2 }}>
+            <Routes>
+              <Route path="/users/:userId" element={<UserDetailWrapper />} />
+              <Route path="/photos/:userId/:photoIndex?" element={<UserPhotosWrapper />} />
+              <Route path="/users" element={<UserList />} />
+              <Route path="/" element={<Navigate to="/users" replace />} />
+            </Routes>
+          </Paper>
+        </Grid>
+      </Grid>
+    </BrowserRouter>
   );
 }
 

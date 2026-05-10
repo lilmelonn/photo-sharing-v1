@@ -1,113 +1,100 @@
-import React from "react";
-import { Link, useParams } from "react-router-dom";
-import {
-  Card,
-  CardMedia,
-  CardContent,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Box,
-  CircularProgress,
-} from "@mui/material";
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import Grid from '@mui/material/Grid';
+import Card from '@mui/material/Card';
+import CardMedia from '@mui/material/CardMedia';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import fetchModel from '../../lib/fetchModelData';
+import PhotoStepper from '../PhotoStepper';
 
-import "./styles.css";
-import models from "../../modelData/models";
-
-/**
- * Define UserPhotos, a React component of Project 4.
- */
-function UserPhotos() {
+function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
   const { userId } = useParams();
-  
-  // Kiểm tra dữ liệu trước khi dùng
-  const photos = models.photoOfUserModel(userId) || [];
-  const user = models.userModel(userId);
+  const [photos, setPhotos] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Nếu đang loading hoặc chưa có dữ liệu
-  if (!photos) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
+  useEffect(() => {
+    setLoading(true);
+    // Lấy danh sách ảnh của user
+    fetchModel(`/photosOfUser/${userId}`)
+      .then(response => {
+        setPhotos(response.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load photos:', err);
+        setLoading(false);
+      });
+
+    // Lấy thông tin user để cập nhật TopBar
+    fetchModel(`/user/${userId}`)
+      .then(userRes => {
+        if (onLoadPhotos) onLoadPhotos(userRes.data);
+      })
+      .catch(err => console.error('Failed to load user for TopBar:', err));
+  }, [userId, onLoadPhotos, refreshKey]);
+
+  const formatDate = (dateStr) => new Date(dateStr).toLocaleString();
+
+  if (loading) {
+    return <div>Loading photos...</div>;
   }
 
-  // Kiểm tra nếu không có ảnh
-  if (photos.length === 0) {
-    return (
-      <Typography variant="body1" sx={{ p: 2 }}>
-        This user hasn't uploaded any photos yet.
-      </Typography>
-    );
+  // Chế độ Stepper (Extra Credit)
+  if (advanced) {
+    return <PhotoStepper photos={photos} userId={userId} />;
   }
 
+  // Chế độ bình thường: lưới ảnh
   return (
-    <Box sx={{ p: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        {user?.first_name || 'User'} {user?.last_name || ''}'s Photos
-      </Typography>
-      
-      {photos.map((photo) => (
-        <Card key={photo._id} sx={{ maxWidth: 600, marginBottom: 4 }}>
-          <CardMedia
-            component="img"
-            image={`/images/${photo.file_name}`}
-            alt={`Photo by ${user?.first_name || 'User'}`}
-            sx={{ maxHeight: 500, objectFit: "contain" }}
-          />
-          
-          <CardContent>
-            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-              📅 Posted: {photo.date_time ? new Date(photo.date_time).toLocaleString() : 'Unknown date'}
-            </Typography>
-            
-            <Divider sx={{ my: 1 }} />
-            
-            <Typography variant="subtitle2" gutterBottom>
-              💬 Comments ({photo.comments?.length || 0}):
-            </Typography>
-            
-            <List dense>
-              {photo.comments && photo.comments.length > 0 ? (
-                photo.comments.map((comment) => (
-                  <ListItem key={comment._id} alignItems="flex-start">
-                    <ListItemText
-                      primary={
-                        <Typography component="span" variant="body2">
-                          <Link 
-                            to={`/users/${comment.user?._id}`}
-                            style={{ textDecoration: "none", fontWeight: "bold" }}
-                          >
-                            {comment.user?.first_name || 'Unknown'} {comment.user?.last_name || ''}
+    <div style={{ padding: 16 }}>
+      <Grid container spacing={3}>
+        {photos.map(photo => (
+          <Grid item xs={12} md={6} key={photo._id}>
+            <Card>
+              <CardMedia
+                component="img"
+                image={`/images/${photo.file_name}`}
+                alt={`Photo ${photo._id}`}
+              />
+              <CardContent>
+                <Typography variant="caption">
+                  Taken on: {formatDate(photo.date_time)}
+                </Typography>
+                <Typography variant="h6" sx={{ mt: 1 }}>
+                  Comments
+                </Typography>
+                <List dense>
+                  {photo.comments.map(comment => (
+                    <ListItem key={comment._id} alignItems="flex-start">
+                      <ListItemText
+                        primary={
+                          <Link to={`/users/${comment.user._id}`}>
+                            {comment.user.first_name} {comment.user.last_name}
                           </Link>
-                          {" · "}
-                          {comment.date_time ? new Date(comment.date_time).toLocaleString() : 'Unknown date'}
-                        </Typography>
-                      }
-                      secondary={
-                        <Typography variant="body2" color="text.primary">
-                          {comment.comment || 'No comment text'}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                ))
-              ) : (
-                <ListItem>
-                  <ListItemText 
-                    primary="No comments yet."
-                    secondary="Be the first to comment!"
-                  />
-                </ListItem>
-              )}
-            </List>
-          </CardContent>
-        </Card>
-      ))}
-    </Box>
+                        }
+                        secondary={
+                          <>
+                            <Typography variant="caption">
+                              {formatDate(comment.date_time)}
+                            </Typography>
+                            <br />
+                            {comment.comment}
+                          </>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    </div>
   );
 }
 
