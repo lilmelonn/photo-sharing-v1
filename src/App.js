@@ -20,7 +20,17 @@ function App() {
     setContextText('');      // Xóa context khi logout
   };
   const handlePhotoUploaded = () => setRefreshPhotosKey(prev => prev + 1);
-  const updateContext = (text) => setContextText(text);
+ const updateContext = (user) => {
+  if (user && typeof user === 'object') {
+    // Nếu user là object, lấy first_name + last_name
+    setContextText(`${user.first_name} ${user.last_name}`);
+  } else if (typeof user === 'string') {
+    // Nếu đã là string (trường hợp khác)
+    setContextText(user);
+  } else {
+    setContextText('');
+  }
+};
 
   // Component bảo vệ route yêu cầu đăng nhập
   const RequireAuth = ({ children }) => {

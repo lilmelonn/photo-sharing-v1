@@ -28,14 +28,13 @@ function TopBar({
     if (onPhotoUploaded) onPhotoUploaded();
   };
 
-  const handleLogoutClick = async () => {
+   const handleLogoutClick = async () => {
     try {
+      // Gửi yêu cầu đến endpoint /admin/logout
       await axios.post('/admin/logout');
-      // Clear user state in App
       if (onLogout) onLogout();
-      // Optional: reload page or navigate to login (done in App)
     } catch (err) {
-      console.error('Logout failed:', err.response?.data || err.message);
+      console.error('Logout error:', err);
     }
   };
 

@@ -20,8 +20,10 @@ function LoginRegister({ onLogin }) {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError('');
     try {
-      const res = await axios.post(`${BACKEND_URL}/admin/login`, { login_name: loginName, password });
+      // Không cần URL tuyệt đối, axios sẽ tự động nối với baseURL
+      const res = await axios.post('/admin/login', { login_name: loginName, password });
       onLogin(res.data);
     } catch (err) {
       setLoginError(err.response?.data?.error || 'Login failed');

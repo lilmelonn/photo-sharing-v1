@@ -39,21 +39,20 @@ function PhotoUploadModal({ open, onClose, onUploaded }) {
     formData.append('photo', file);
 
     try {
-      // Dùng axios với baseURL đã cấu hình sẵn (vd: http://localhost:3000)
+      // Axios đã có baseURL và withCredentials từ cấu hình global
       const response = await axios.post('/photos/new', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true, // gửi cookie session
       });
       console.log('Upload success:', response.data);
-      // Reset form
+      // Reset input và state
       if (fileInputRef.current) fileInputRef.current.value = '';
       setFile(null);
-      // Gọi callback để refresh danh sách ảnh (nếu có)
+      // Thông báo thành công (tuỳ chọn)
       if (onUploaded) onUploaded();
       onClose();
     } catch (err) {
-      console.error('Upload error details:', err);
-      const msg = err.response?.data?.error || err.message || 'Upload failed';
+      console.error('Upload error:', err);
+      const msg = err.response?.data?.error || err.message || 'Upload failed. Please try again.';
       setError(msg);
     } finally {
       setUploading(false);
@@ -61,7 +60,6 @@ function PhotoUploadModal({ open, onClose, onUploaded }) {
   };
 
   const handleClose = () => {
-    // Reset toàn bộ state và input
     setFile(null);
     setError('');
     if (fileInputRef.current) fileInputRef.current.value = '';

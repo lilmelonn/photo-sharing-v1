@@ -9,6 +9,8 @@ import Typography from '@mui/material/Typography';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 import PhotoStepper from '../PhotoStepper';
 
 function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
@@ -18,38 +20,46 @@ function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    // Lấy danh sách ảnh của user
-    axios.get(`/photosOfUser/${userId}`)
-      .then(response => {
-        setPhotos(response.data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to load photos:', err);
-        setError(err.response?.data?.error || 'Failed to load photos');
-        setLoading(false);
-      });
-
-    // Lấy thông tin user để cập nhật TopBar
-    axios.get(`/user/${userId}`)
-      .then(userRes => {
-        if (onLoadPhotos) onLoadPhotos(userRes.data);
-      })
-      .catch(err => console.error('Failed to load user for TopBar:', err));
+    let isMounted = true;
+    const fetchData = async () => {
+      if (!userId) return;
+      setLoading(true);
+      try {
+        // Gọi đồng thời hai API
+        const [photosRes, userRes] = await Promise.all([
+          axios.get(`/photosOfUser/${userId}`),
+          axios.get(`/user/${userId}`)
+        ]);
+        if (isMounted) {
+          setPhotos(photosRes.data);
+          if (onLoadPhotos) onLoadPhotos(userRes.data);
+          setError('');
+        }
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        if (isMounted) {
+          setError(err.response?.data?.error || 'Failed to load photos');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted = false; };
   }, [userId, onLoadPhotos, refreshKey]);
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleString();
 
-  if (loading) return <div>Loading photos...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  // Chế độ Stepper (Extra Credit)
-  if (advanced) {
-    return <PhotoStepper photos={photos} userId={userId} />;
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+        <CircularProgress />
+      </Box>
+    );
   }
+  if (error) return <Typography color="error" sx={{ p: 2 }}>Error: {error}</Typography>;
+  if (advanced) return <PhotoStepper photos={photos} userId={userId} />;
 
-  // Chế độ bình thường: lưới ảnh
   return (
     <div style={{ padding: 16 }}>
       <Grid container spacing={3}>
@@ -58,8 +68,9 @@ function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
             <Card>
               <CardMedia
                 component="img"
-                image={`http://localhost:3000/images/${photo.file_name}`}
+                image={`/images/${photo.file_name}`}
                 alt={`Photo ${photo._id}`}
+                onError={(e) => { e.target.src = '/images/placeholder.jpg'; }}
               />
               <CardContent>
                 <Typography variant="caption">
@@ -69,26 +80,32 @@ function UserPhotos({ onLoadPhotos, advanced = false, refreshKey = 0 }) {
                   Comments
                 </Typography>
                 <List dense>
-                  {photo.comments.map(comment => (
-                    <ListItem key={comment._id} alignItems="flex-start">
-                      <ListItemText
-                        primary={
-                          <Link to={`/users/${comment.user._id}`}>
-                            {comment.user.first_name} {comment.user.last_name}
-                          </Link>
-                        }
-                        secondary={
-                          <>
-                            <Typography variant="caption">
-                              {formatDate(comment.date_time)}
-                            </Typography>
-                            <br />
-                            {comment.comment}
-                          </>
-                        }
-                      />
-                    </ListItem>
-                  ))}
+                  {photo.comments && photo.comments.length > 0 ? (
+                    photo.comments.map(comment => (
+                      <ListItem key={comment._id} alignItems="flex-start">
+                        <ListItemText
+                          primary={
+                            <Link to={`/users/${comment.user._id}`}>
+                              {comment.user.first_name} {comment.user.last_name}
+                            </Link>
+                          }
+                          secondary={
+                            <>
+                              <Typography variant="caption">
+                                {formatDate(comment.date_time)}
+                              </Typography>
+                              <br />
+                              {comment.comment}
+                            </>
+                          }
+                        />
+                      </ListItem>
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="textSecondary">
+                      No comments yet.
+                    </Typography>
+                  )}
                 </List>
               </CardContent>
             </Card>
